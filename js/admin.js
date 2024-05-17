@@ -65,10 +65,22 @@ function createChartConfig(
             scales: {
                 yAxes: [{
                     ticks: {
-                        beginAtZero:true
+                        beginAtZero:true,
+                        callback: function(value, index, values) {
+                            return numToString(value);
+                        }
                     }
                 }]
-            }
+            },
+            tooltips: {
+                callbacks: {
+                   label: function(t, d) {
+                      var xLabel = d.datasets[t.datasetIndex].label || t.xLabel
+                      var yLabel = numToString(t.yLabel || d.datasets[t.datasetIndex].data[t.index])
+                      return xLabel + ': ' + yLabel;
+                   }
+                }
+             }
         }
     };
 }
@@ -77,6 +89,10 @@ function addThongKe() {
     var danhSachDonHang = getListDonHang(true);
 
     var thongKeHang = {}; // Thống kê hãng
+    var thongKeNgay = {}; // Thống kê theo ngày
+    var thongKeSanPham = {} // Thống kê theo sản phẩm
+
+    console.log(danhSachDonHang)
 
     danhSachDonHang.forEach(donHang => {
         // Nếu đơn hàng bị huỷ thì không tính vào số lượng bán ra
@@ -89,6 +105,7 @@ function addThongKe() {
             let donGia = stringToNum(sanPhamTrongDonHang.sanPham.price);
             let thanhTien = soLuong * donGia;
 
+            // thống kê hãng
             if(!thongKeHang[tenHang]) {
                 thongKeHang[tenHang] = {
                     soLuongBanRa: 0,
@@ -98,12 +115,41 @@ function addThongKe() {
 
             thongKeHang[tenHang].soLuongBanRa += soLuong;
             thongKeHang[tenHang].doanhThu += thanhTien;
+
+            // thống kê ngày
+            let ngay = new Date(donHang.ngaygio)
+            ngay = ngay.getDate() + '-' + (ngay.getMonth() + 1) + '-' + ngay.getFullYear();
+            if(!thongKeNgay[ngay]) {
+                thongKeNgay[ngay] = {
+                    soLuongBanRa: 0,
+                    doanhThu: 0,
+                }
+            }
+            thongKeNgay[ngay].soLuongBanRa += soLuong;
+            thongKeNgay[ngay].doanhThu += thanhTien;
+
+            // thống kê sản phẩm
+            if(!thongKeSanPham[sanPhamTrongDonHang.sanPham.name]) {
+                thongKeSanPham[sanPhamTrongDonHang.sanPham.name] = {
+                    soLuongBanRa: 0,
+                    doanhThu: 0,
+                }
+            }
+
+            thongKeSanPham[sanPhamTrongDonHang.sanPham.name].soLuongBanRa += soLuong;
+            thongKeSanPham[sanPhamTrongDonHang.sanPham.name].doanhThu += thanhTien;
         })
     })
 
 
     // Lấy mảng màu ngẫu nhiên để vẽ đồ thị
-    let colors = getListRandomColor(Object.keys(thongKeHang).length);
+    let colors = getListRandomColor(
+        Math.max(
+            Object.keys(thongKeHang).length,
+            Object.keys(thongKeNgay).length,
+            Object.keys(thongKeSanPham).length
+        )
+    );
 
     // Thêm thống kê
     addChart('myChart1', createChartConfig(
@@ -119,6 +165,30 @@ function addThongKe() {
         'doughnut', 
         Object.keys(thongKeHang), 
         Object.values(thongKeHang).map(_ =>  _.doanhThu),
+        colors,
+    ));
+
+    addChart('myChart3', createChartConfig(
+        'Sản phẩm theo ngày',
+        'bar', 
+        Object.keys(thongKeNgay), 
+        Object.values(thongKeNgay).map(_ =>  _.soLuongBanRa),
+        colors,
+    ));
+
+    addChart('myChart4', createChartConfig(
+        'Doanh thu theo ngày',
+        'bar', 
+        Object.keys(thongKeNgay), 
+        Object.values(thongKeNgay).map(_ =>  _.doanhThu),
+        colors,
+    ));
+
+    addChart('myChart0', createChartConfig(
+        'Sản phẩm bán chạy',
+        'bar', 
+        Object.keys(thongKeSanPham), 
+        Object.values(thongKeSanPham).map(_ =>  _.soLuongBanRa),
         colors,
     ));
 
